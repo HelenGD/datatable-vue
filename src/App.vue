@@ -8,19 +8,34 @@
     {{isLoading ? 'loading...': ''}}
     rows {{data.length}}
   </div>
+  <loader v-if="isLoading" />
+  <data-table 
+    v-if="!isLoading" 
+    :data="sortedData" 
+    :sort="sort"
+    @sort="onSort"
+  />
 </template>
 
 <script>
-import switcher from './components/switcher';
+import Switcher from './components/switcher';
+import Loader from './components/loader';
+import DataTable from './components/data-table';
 import { useData } from './hooks/use-data';
-import { ref } from "vue";
+import { useSort } from './hooks/use-sort';
+import { getSortedRecords } from "./utils"
+import { ref, computed } from "vue";
 
 export default {
   name: 'App',
   components: {
-    switcher,
+    Switcher,
+    Loader,
+    DataTable,
   },
   setup() {
+     const {sort, onSort} = useSort();
+  
       const checked= ref("radio-1");
       const setChecked = value => {
         checked.value = value;
@@ -31,11 +46,15 @@ export default {
       data,
     } = useData({checked});
 
+    const sortedData = computed(() => getSortedRecords(data.value, sort));
     return {
       isLoading,
       data,
+      sortedData,
       checked,
       setChecked,
+      sort,
+      onSort,
     }
   }
 }
