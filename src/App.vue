@@ -1,17 +1,19 @@
 <template>
   <img alt="Vue logo" src="./assets/logo.png">
+  <search @submit="handleSubmitFilter"/>
   <switcher 
     :checked="checked"
     @change="setChecked"
   />
-  <div>
-    {{isLoading ? 'loading...': ''}}
-    rows {{data.length}}
-  </div>
+  <pagination 
+    @switch="onSwitch"
+    :currentPage="currentPage"
+    :pages="pages"
+  />
   <loader v-if="isLoading" />
   <data-table 
     v-if="!isLoading" 
-    :data="sortedData" 
+    :data="sliceRecords" 
     :sort="sort"
     @sort="onSort"
   />
@@ -21,10 +23,13 @@
 import Switcher from './components/switcher';
 import Loader from './components/loader';
 import DataTable from './components/data-table';
+import Search from './components/search';
+import Pagination from './components/pagination';
 import { useData } from './hooks/use-data';
 import { useSort } from './hooks/use-sort';
+import { usePagination } from './hooks/use-pagination';
 import { getSortedRecords } from "./utils"
-import { ref, computed } from "vue";
+import { ref, computed, watch } from "vue";
 
 export default {
   name: 'App',
@@ -32,21 +37,46 @@ export default {
     Switcher,
     Loader,
     DataTable,
+    Search,
+    Pagination,
   },
   setup() {
-     const {sort, onSort} = useSort();
+    const {sort, onSort} = useSort();
+    const findFilter = ref("");
+
+    const handleSubmitFilter = value => {
+      findFilter.value = value;
+    }
   
-      const checked= ref("radio-1");
-      const setChecked = value => {
-        checked.value = value;
-      }
+    const checked = ref("radio-1");
+    const setChecked = value => {
+      checked.value = value;
+    }
 
     const {
       isLoading,
       data,
     } = useData({checked});
 
-    const sortedData = computed(() => getSortedRecords(data.value, sort));
+    const filteredData = computed(() => data.value.filter(row => JSON
+      .stringify(row)
+      .toLowerCase()
+      .includes(findFilter.value.toLowerCase())
+    ));
+
+    const sortedData = computed(() => getSortedRecords(filteredData.value, sort));
+    
+    const {
+        currentPage,
+        sliceRecords,
+        pages,
+        onSwitch,
+    } = usePagination(sortedData);
+
+    watch(filteredData, () => {
+      onSwitch(1);
+    });
+    
     return {
       isLoading,
       data,
@@ -55,6 +85,11 @@ export default {
       setChecked,
       sort,
       onSort,
+      handleSubmitFilter,
+      currentPage,
+      sliceRecords,
+      pages,
+      onSwitch,
     }
   }
 }
